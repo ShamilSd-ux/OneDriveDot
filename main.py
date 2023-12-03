@@ -26,6 +26,7 @@ def main():
     from modules.handlers.logout import logout_handler
     from modules.handlers.links import links_handler
     from modules.handlers.url import url_handler
+    from modules.handlers.magnet import magnet_handler
     from modules.handlers.transfer import transfer_handler
 
     tg_bot.run_until_disconnected()
