@@ -6,62 +6,93 @@
 """
 
 from time import time
+from io import BytesIO
 from telethon import events
 from ltorrent.lt_async.client import Client, CustomStorage
 from ltorrent.lt_async.log import LoggerBase
-from modules.client import tg_bot
-from modules.env import tg_user_name
+from modules.client import tg_bot, onedrive
+from modules.env import tg_user_name, server_uri
 from modules.utils import check_in_group, check_tg_login, check_od_login, cmd_parser
 from modules.log import logger
 
-port = 8080
+port = int(server_uri.rstrip('/').split(':')[-1])
 
 class MyStorage(CustomStorage):
-    def __init__(self):
+    def __init__(self, file_info_list):
         CustomStorage.__init__(self)
+        self.file_info_list = file_info_list
+        self.uploader_session_dict = {}
     
-    def write(self, file_piece_list, data):
-        pass
+    async def write(self, file_piece_list, data):
+        for file_piece in file_piece_list:
+            if file_piece['path'] not in self.uploader_session_dict:
+                name = file_piece['path'].split('/')[-1]
+                upload_session = onedrive.multipart_upload_session_builder(name)
+                for file_info in self.file_info_list:
+                    if file_info['path'] == file_piece['path']:
+                        self.uploader_session_dict[file_piece['path']] = onedrive.multipart_uploader(upload_session, file_info['length'])
+                        break
 
-    def read(self, files, block_offset, block_length):
+            file_offset = file_piece["fileOffset"]
+            piece_offset = file_piece["pieceOffset"]
+            length = file_piece["length"]
+            buffer = BytesIO(data[piece_offset : piece_offset + length])
+            await onedrive.multipart_upload(
+                self.uploader_session_dict[file_piece['path']],
+                buffer,
+                file_offset
+            )
+
+    async def read(self, files, block_offset, block_length):
         pass
 
 class MyLogger(LoggerBase):
-    def __init__(self, callback):
+    def __init__(self, bot, callback):
         LoggerBase.__init__(self)
+        self.bot = bot
         self.callback = callback
+        self.message = None
         self.last_call = time()
     
     async def INFO(self, *args):
-        merge_string = ' '.join(map(str, args))
-        await self.callback(merge_string)
+        merged_string = ' '.join(map(str, args))
+        logger(merged_string)
+        if self.message:
+            await self.bot.edit_message(self.message, merged_string)
+        else:
+            self.message = await self.callback(merged_string)
 
     async def PROGRESS(self, *args):
         now = time()
         if now - self.last_call > 5:
-            merge_string = ' '.join(map(str, args))
-            await self.callback(merge_string)
+            merged_string = ' '.join(map(str, args))
+            logger(merged_string)
+            if self.message:
+                await self.bot.edit_message(self.message, merged_string)
+            else:
+                self.message = await self.callback(merged_string)
             self.last_call = now
     
     async def FILES(self, *args):
-        merge_string = ' '.join(map(str, args))
-        await self.callback(merge_string)
+        merged_string = ' '.join(map(str, args))
+        logger(merged_string)
+        await self.callback(merged_string)
     
     async def DEBUG(self, *args):
-        merge_string = ' '.join(map(str, args))
-        logger(merge_string)
+        merged_string = ' '.join(map(str, args))
+        logger(merged_string)
 
 @tg_bot.on(events.NewMessage(pattern="/magnet", incoming=True, from_users=tg_user_name))
 @check_in_group
 @check_tg_login
 @check_od_login
 async def magnet_handler(event):
-    custom_storage = MyStorage()
-    my_logger = MyLogger(event.respond)
+    my_logger = MyLogger(tg_bot, event.respond)
     client = Client(
         port=port,
-        custom_storage=custom_storage,
-        stdout=my_logger
+        custom_storage=True,
+        stdout=my_logger,
+        sequential=True
     )
 
     cmd = cmd_parser(event)
@@ -71,6 +102,7 @@ async def magnet_handler(event):
             client.load(magnet_link=cmd[1])
             # '0' for all
             await client.select_file(selection='0')
+            client.custom_storage = MyStorage(client.torrent.file_names)
             await client.run()
         else:
             await event.reply('Format wrong.')
@@ -84,6 +116,7 @@ async def magnet_handler(event):
         # /magnet magnet:?xt=urn:btih:xxxxxxxxxxxx 1 3-6 9
         client.load(magnet_link=cmd[1])
         await client.select_file(selection=' '.join(cmd[2:]))
+        client.custom_storage = MyStorage(client.torrent.file_names)
         await client.run()
 
     raise events.StopPropagation

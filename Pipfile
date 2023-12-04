@@ -9,4 +9,4 @@ flask = "*"
 telethon = "*"
 requests = "*"
 cryptg = "==0.4.0"
-ltorrent = {ref = "1.3.0", git = "https://github.com/hlf20010508/LTorrent.git"}
+ltorrent = {ref = "1.4.0", git = "https://github.com/hlf20010508/LTorrent.git"}
