@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "73492b2380a33ed45cf62b9bb1afe63523c3dc83fe0b8e662d9c05cc2cb80d53"
+            "sha256": "f6ae996fc90e74299812bcf8f4e0521d2c0d74db37947bd83a4b31ac0383b9e6"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -558,9 +558,10 @@
             "markers": "python_version >= '3.7'",
             "version": "==3.1.2"
         },
-        "ltorrent": {
+        "ltorrent-async": {
             "git": "https://github.com/hlf20010508/LTorrent.git",
-            "ref": "0594de8a76dff5c6cb62953446feaef720a0e2da"
+            "ref": "b3dfe6891fc2550d20471d9e8c0f8a31bc1fd3a9",
+            "subdirectory": "ltorrent_async"
         },
         "markupsafe": {
             "hashes": [

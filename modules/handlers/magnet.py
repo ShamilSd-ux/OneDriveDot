@@ -8,8 +8,8 @@
 from time import time
 from io import BytesIO
 from telethon import events
-from ltorrent.lt_async.client import Client, CustomStorage
-from ltorrent.lt_async.log import LoggerBase
+from ltorrent_async.client import Client, CustomStorage
+from ltorrent_async.log import LoggerBase
 from modules.client import tg_bot, onedrive
 from modules.env import tg_user_name, server_uri
 from modules.utils import check_in_group, check_tg_login, check_od_login, cmd_parser
@@ -99,7 +99,7 @@ async def magnet_handler(event):
     if len(cmd) == 2:
         # /magnet magnet:?xt=urn:btih:xxxxxxxxxxxx
         if cmd[1].startswith('magnet:?'):
-            client.load(magnet_link=cmd[1])
+            await client.load(magnet_link=cmd[1])
             # '0' for all
             await client.select_file(selection='0')
             client.custom_storage = MyStorage(client.torrent.file_names)
@@ -110,11 +110,11 @@ async def magnet_handler(event):
         # /magnet list magnet:?xt=urn:btih:xxxxxxxxxxxx
         await event.reply('Format wrong.')
     elif len(cmd) == 3 and cmd[1] == 'list' and cmd[2].startswith('magnet:?'):
-        client.load(magnet_link=cmd[2])
+        await client.load(magnet_link=cmd[2])
         await client.list_file()
     elif len(cmd) >2 and cmd[1].startswith('magnet:?'):
         # /magnet magnet:?xt=urn:btih:xxxxxxxxxxxx 1 3-6 9
-        client.load(magnet_link=cmd[1])
+        await client.load(magnet_link=cmd[1])
         await client.select_file(selection=' '.join(cmd[2:]))
         client.custom_storage = MyStorage(client.torrent.file_names)
         await client.run()
