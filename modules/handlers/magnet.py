@@ -8,7 +8,8 @@
 from time import time
 from io import BytesIO
 from telethon import events
-from ltorrent_async.client import Client, CustomStorage
+from ltorrent_async.client import Client
+from ltorrent_async.storage import StorageBase
 from ltorrent_async.log import LoggerBase
 from modules.client import tg_bot, onedrive
 from modules.env import tg_user_name, server_uri
@@ -17,10 +18,10 @@ from modules.log import logger
 
 port = int(server_uri.rstrip('/').split(':')[-1])
 
-class MyStorage(CustomStorage):
-    def __init__(self, file_info_list):
-        CustomStorage.__init__(self)
-        self.file_info_list = file_info_list
+class MyStorage(StorageBase):
+    def __init__(self):
+        StorageBase.__init__(self)
+        self.file_info_list = []
         self.uploader_session_dict = {}
     
     async def write(self, file_piece_list, data):
@@ -88,9 +89,10 @@ class MyLogger(LoggerBase):
 @check_od_login
 async def magnet_handler(event):
     my_logger = MyLogger(tg_bot, event.respond)
+    my_storage = MyStorage()
     client = Client(
         port=port,
-        custom_storage=True,
+        storage=my_storage,
         stdout=my_logger,
         sequential=True
     )
@@ -102,21 +104,21 @@ async def magnet_handler(event):
             await client.load(magnet_link=cmd[1])
             # '0' for all
             await client.select_file(selection='0')
-            client.custom_storage = MyStorage(client.torrent.file_names)
+            client.storage.file_info_list = client.torrent.file_names
             await client.run()
         else:
             await event.reply('Format wrong.')
     elif len(cmd) == 1:
-        # /magnet list magnet:?xt=urn:btih:xxxxxxxxxxxx
         await event.reply('Format wrong.')
     elif len(cmd) == 3 and cmd[1] == 'list' and cmd[2].startswith('magnet:?'):
+        # /magnet list magnet:?xt=urn:btih:xxxxxxxxxxxx
         await client.load(magnet_link=cmd[2])
         await client.list_file()
     elif len(cmd) >2 and cmd[1].startswith('magnet:?'):
         # /magnet magnet:?xt=urn:btih:xxxxxxxxxxxx 1 3-6 9
         await client.load(magnet_link=cmd[1])
         await client.select_file(selection=' '.join(cmd[2:]))
-        client.custom_storage = MyStorage(client.torrent.file_names)
+        client.storage.file_info_list = client.torrent.file_names
         await client.run()
 
     raise events.StopPropagation
