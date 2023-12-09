@@ -17,7 +17,7 @@ services:
       # - telegram-onedrive-session:/telegram-onedrive/session
 
     environment:
-      - server_uri=$server_uri(must be https and port specified, like https://example.com:8080)
+      - server_uri=https://127.0.0.1:8080
       - tg_bot_token=$tg_bot_token
       - tg_api_id=$tg_api_id
       - tg_api_hash=$tg_api_hash
